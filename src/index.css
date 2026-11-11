@@ -1,0 +1,847 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Rebind Tailwind's `dark:` variant to the superadmin-controlled
+   [data-theme-mode="dark"] attribute (set by ThemeProvider) instead of the
+   OS `prefers-color-scheme` default, so every `dark:` utility across the
+   app — including the shadcn/ui primitives below — follows the saved
+   platform theme, not the visitor's OS setting. */
+@custom-variant dark (&:where([data-theme-mode="dark"], [data-theme-mode="dark"] *));
+
+/* ===========================
+   THEME TOKENS
+   Maps semantic Tailwind utilities (bg-accent, text-heading, bg-surface, ...)
+   to CSS custom properties. --accent-* are set at runtime by ThemeProvider
+   (src/components/ThemeProvider/ThemeProvider.tsx) from the superadmin's
+   chosen color, so any hex is possible. --surface/--heading/etc. flip between
+   light and dark via the [data-theme-mode] block below.
+   =========================== */
+@theme inline {
+  --color-accent: var(--accent-color);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-border: var(--border);
+  --color-heading: var(--heading);
+  --color-body: var(--body);
+  --color-subtle: var(--subtle);
+  --color-app: var(--app-bg);
+  --color-field: var(--field-bg);
+
+  /* shadcn/ui primitive tokens (components/ui/*.tsx) — mapped onto the same
+     theme system so button/input/dialog/select etc. stay in sync too. */
+  --color-background: var(--app-bg);
+  --color-foreground: var(--heading);
+  --color-card: var(--surface-strong);
+  --color-card-foreground: var(--heading);
+  --color-popover: var(--surface-strong);
+  --color-popover-foreground: var(--heading);
+  --color-primary: var(--accent-color);
+  --color-primary-foreground: var(--accent-foreground);
+  --color-secondary: var(--surface);
+  --color-secondary-foreground: var(--heading);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--subtle);
+  --color-destructive: #ef4444;
+  --color-input: var(--field-bg);
+  --color-ring: var(--accent-color);
+}
+
+/* Global styles */
+html {
+  overflow-anchor: none;
+}
+
+/* App-shell layouts (Client/Admin/SuperAdmin) size themselves to 100vh and
+   scroll only inside their own <main>. Without this, any nested page that
+   overflows its container (a stray min-h-screen, a wide table, ...) makes
+   the document itself scroll instead, dragging the sticky topbar off-screen
+   with it. Locking html/body here forces all scrolling into the intended
+   inner regions. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+button,
+a[href],
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+summary,
+select,
+label[for] {
+  cursor: pointer;
+}
+
+
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  color: var(--heading);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--app-bg);
+  color: var(--heading);
+}
+
+
+/* Scrollbar thumb follows the superadmin's chosen accent color. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-hover);
+}
+
+/* Firefox */
+* {
+  scrollbar-color: var(--accent-color) transparent;
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Runtime accent fallback (overwritten immediately by ThemeProvider on
+     mount from the superadmin's saved color — this is just the pre-JS/SSR
+     default so nothing looks unstyled for a frame). */
+  --accent-color: #38bdf8;
+  --accent-foreground: #0f172a;
+  --accent-hover: #7dd3fc;
+  --accent-soft: rgba(56, 189, 248, 0.16);
+  --accent-glow: rgba(56, 189, 248, 0.28);
+
+  /* Dark is the default look (matches the product's existing dark "vortex"
+     theme) so there's no flash of an unfamiliar palette before the
+     superadmin's saved mode loads. Dark mode surfaces stay fixed regardless
+     of the chosen accent — only the buttons/badges/nav-highlights that
+     already reference --accent-color directly change; the page chrome
+     itself doesn't. Light mode (below) tints its surfaces with the accent
+     instead, since flat neutral gray read poorly there. */
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-strong: rgba(15, 23, 42, 0.72);
+  --border: rgba(255, 255, 255, 0.12);
+  --heading: #ffffff;
+  --body: rgba(226, 232, 240, 0.85);
+  --subtle: rgba(148, 163, 184, 0.75);
+  --app-bg: #020617;
+  --field-bg: rgba(255, 255, 255, 0.06);
+  /* Fully-opaque twin of --surface-strong (same RGB, alpha 1) - for panels
+     that must never show what's behind them (mobile sidebar drawers) even
+     if backdrop-filter fails to composite, which some mobile browsers do
+     unreliably on a `fixed`-positioned overlay. --surface-strong itself is
+     intentionally translucent (relies on blur) for cards layered over page
+     content, so it can't be reused directly for this. */
+  --surface-strong-opaque: #0f172a;
+
+  /* Page-hero decorative glows (the two radial-gradient accents behind admin
+     page headers like "Client Management"). Both stops derive from the
+     superadmin's actual accent color so the chosen color visibly spreads
+     across the header instead of a generic gold/cream sheen; dark mode
+     keeps the transparent-blend version so it never washes out a dark
+     header, light mode blends toward white instead so it stays a sheen
+     rather than a flat wash. */
+  --hero-glow-1: color-mix(in srgb, var(--accent-color) 30%, transparent);
+  --hero-glow-2: color-mix(in srgb, var(--heading) 6%, transparent);
+
+  /* Semantic status text colors used across admin (positive/negative/info/
+     purple states rendered via inline style, where a Tailwind dark: variant
+     isn't reachable). Dark-mode values here are lightened pastels so they
+     stay readable against dark surfaces; light mode below swaps in the
+     original deeper tones the admin theme was designed with. */
+  --status-green: #8ab88a;
+  --status-red: #c47a7a;
+  --status-blue: #7ea6c7;
+  --status-purple: #9991ca;
+}
+
+:root[data-theme-mode="light"] {
+  /* Higher-opacity/darker than the dark-mode values above: light mode has
+     much less natural contrast between a translucent card and a light
+     page, so surfaces need to read closer to solid and text needs to be
+     darker to avoid washing out. */
+  --surface: color-mix(in srgb, rgba(255, 255, 255, 0.97) 90%, var(--accent-color) 10%);
+  --surface-strong: color-mix(in srgb, #ffffff 94%, var(--accent-color) 6%);
+  --border: color-mix(in srgb, rgba(15, 23, 42, 0.16) 82%, var(--accent-color) 18%);
+  --heading: #0f172a;
+  --body: #1e293b;
+  --subtle: #475569;
+  --app-bg: color-mix(in srgb, #eef1f6 92%, var(--accent-color) 8%);
+  --field-bg: color-mix(in srgb, rgba(15, 23, 42, 0.05) 88%, var(--accent-color) 12%);
+  /* --surface-strong is already fully opaque in light mode (both color-mix
+     ingredients are opaque), so this is just an explicit alias for parity
+     with the dark-mode token above. */
+  --surface-strong-opaque: color-mix(in srgb, #ffffff 94%, var(--accent-color) 6%);
+
+  --status-green: #2f5e33;
+  --status-red: #7a2a2a;
+  --status-blue: #355877;
+  --status-purple: #595281;
+
+  --hero-glow-1: color-mix(in srgb, var(--accent-color) 30%, transparent);
+  --hero-glow-2: color-mix(in srgb, var(--accent-color) 16%, white);
+}
+
+.client-theme-bg {
+  background-color: var(--app-bg);
+  background-image: linear-gradient(
+    135deg,
+    var(--app-bg),
+    color-mix(in srgb, var(--app-bg) 90%, var(--accent-color) 10%),
+    var(--app-bg)
+  );
+  color: var(--heading);
+}
+
+.client-theme-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  color: var(--heading);
+}
+
+.client-theme-surface-strong {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  color: var(--heading);
+}
+
+/* Client sidebar's own solid base — .client-theme-surface-strong above
+   relies on its blur to read as opaque, but Sidebar.tsx disables blur
+   below the lg breakpoint (perf on mobile), and on mobile this panel is
+   `fixed` and overlays the page content. var(--surface-strong) alone is
+   only a few % opaque in dark mode, so without this the page behind bled
+   straight through - the same fix already applied to .admin-sidebar-shell. */
+.client-sidebar-shell {
+  /* Same fully-opaque base as .admin-sidebar-shell (see its comment) -
+     --surface-strong alone is only ~72% opaque in dark mode, and Sidebar.tsx
+     disables backdrop-filter below the lg breakpoint, so without this the
+     page behind the mobile drawer was still partially visible. */
+  background-color: var(--surface-strong-opaque);
+  background-image: linear-gradient(180deg, var(--surface-strong) 0%, var(--surface) 100%);
+}
+
+/* Light mode only: dark mode's glass-on-black cards already have plenty of
+   depth from the vortex background showing through; the same flat surface
+   color reads as plain/flat in light mode, so give every card an accent-
+   tinted sheen + glow + a visibly stronger accent border there. Layered as
+   background-image/border-color overrides (on top of the existing Tailwind
+   background-color), so this is purely additive — no component changes
+   needed, it reaches every bg-surface/bg-surface-strong card app-wide
+   through the same tokens they already use. */
+:root[data-theme-mode="light"] .bg-surface,
+:root[data-theme-mode="light"] .bg-surface-strong,
+:root[data-theme-mode="light"] .client-theme-surface,
+:root[data-theme-mode="light"] .client-theme-surface-strong,
+:root[data-theme-mode="light"] .admin-surface,
+:root[data-theme-mode="light"] .admin-page,
+:root[data-theme-mode="light"] .admin-hero,
+:root[data-theme-mode="light"] .admin-sidebar-shell,
+:root[data-theme-mode="light"] .admin-topbar-shell {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-color) 12%, transparent) 0%,
+    transparent 45%
+  );
+  border-color: color-mix(in srgb, var(--accent-color) 32%, var(--border));
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, white 60%, transparent) inset,
+    0 16px 32px -8px rgba(15, 23, 42, 0.12),
+    0 18px 40px -12px color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+
+:root[data-theme-mode="light"] .client-theme-surface-strong,
+:root[data-theme-mode="light"] .admin-hero,
+:root[data-theme-mode="light"] .admin-topbar-shell {
+  border-top: 2px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+
+/* Card-level surfaces (not the big page/hero wrappers) get an interactive
+   hover: border brightens to full accent, glow deepens.
+   Deliberately NOT using `transform` here (no hover-lift): a CSS transform
+   on any ancestor becomes the containing block for descendant
+   `position: fixed` elements instead of the viewport. Admin modals are
+   rendered inline (not portaled) all over the app, frequently nested
+   inside one of these hover cards, so a transform here would make any
+   open modal's fixed-position backdrop jump to be relative to the card
+   instead of the screen — and snap again the moment the hover state
+   toggles off. That is the flicker bug: moving the mouse on/off a card
+   elsewhere on the page toggles this transform and the open modal jumps. */
+:root[data-theme-mode="light"] .bg-surface,
+:root[data-theme-mode="light"] .bg-surface-strong,
+:root[data-theme-mode="light"] .admin-surface {
+  cursor: pointer;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+:root[data-theme-mode="light"] .bg-surface:hover,
+:root[data-theme-mode="light"] .bg-surface-strong:hover,
+:root[data-theme-mode="light"] .admin-surface:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, white 70%, transparent) inset,
+    0 20px 40px -8px rgba(15, 23, 42, 0.16),
+    0 24px 48px -10px color-mix(in srgb, var(--accent-color) 34%, transparent);
+}
+
+/* Dark mode, admin/superadmin only. Scoped via the .admin-theme-shell
+   ancestor (the shared wrapper AdminLayout/SuperAdminLayout use) so the
+   client side — which reuses the same bg-surface/bg-surface-strong
+   tokens — is completely untouched, and gated to [data-theme-mode="dark"]
+   so light mode is untouched too. Same accent-tinted sheen/glow/hover
+   treatment admin already gets in light mode, tuned darker/stronger since
+   dark surfaces need more contrast to read as "lifted" than light ones do. */
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface,
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface-strong,
+:root[data-theme-mode="dark"] .admin-surface,
+:root[data-theme-mode="dark"] .admin-page,
+:root[data-theme-mode="dark"] .admin-hero,
+:root[data-theme-mode="dark"] .admin-sidebar-shell,
+:root[data-theme-mode="dark"] .admin-topbar-shell {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-color) 16%, transparent) 0%,
+    transparent 55%
+  );
+  border-color: color-mix(in srgb, var(--accent-color) 38%, var(--border));
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, white 6%, transparent) inset,
+    0 16px 32px -8px rgba(0, 0, 0, 0.4),
+    0 18px 40px -12px color-mix(in srgb, var(--accent-color) 22%, transparent);
+}
+
+:root[data-theme-mode="dark"] .admin-hero,
+:root[data-theme-mode="dark"] .admin-topbar-shell {
+  border-top: 2px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
+}
+
+/* Card-level surfaces get the same hover treatment admin already has in
+   light mode: border brightens, glow deepens. No `transform` here either —
+   see the light-mode rule above for why (breaks position:fixed for any
+   modal nested inside these cards, which is most of them). */
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface,
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface-strong,
+:root[data-theme-mode="dark"] .admin-surface {
+  cursor: pointer;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface:hover,
+:root[data-theme-mode="dark"] .admin-theme-shell .bg-surface-strong:hover,
+:root[data-theme-mode="dark"] .admin-surface:hover {
+  border-color: color-mix(in srgb, var(--accent-color) 65%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, white 8%, transparent) inset,
+    0 20px 40px -8px rgba(0, 0, 0, 0.5),
+    0 24px 48px -10px color-mix(in srgb, var(--accent-color) 36%, transparent);
+}
+
+/* Slightly richer ambient glow behind the whole admin/superadmin shell in
+   dark mode — the light-mode version already has plenty of warmth from the
+   cream palette underneath; dark mode needs a bit more accent presence to
+   avoid reading as flat black. */
+:root[data-theme-mode="dark"] .admin-theme-shell::before {
+  background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+
+:root[data-theme-mode="dark"] .admin-theme-shell::after {
+  background: color-mix(in srgb, var(--accent-color) 34%, transparent);
+}
+
+.client-theme-input {
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  color: var(--heading);
+}
+
+.client-theme-input::placeholder {
+  color: var(--subtle);
+}
+
+.client-theme-input:focus {
+  background: color-mix(in srgb, var(--field-bg), var(--accent-color) 8%);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-appear {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+  animation: authFadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.auth-appear-delay-1 {
+  animation-delay: 90ms;
+}
+
+.auth-appear-delay-2 {
+  animation-delay: 160ms;
+}
+
+.auth-soft-glow {
+  box-shadow:
+    0 22px 54px rgba(2, 6, 23, 0.34),
+    0 0 0 1px var(--border),
+    0 0 36px var(--accent-soft);
+}
+
+.auth-panel-accent {
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-panel-accent::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, var(--accent-soft), transparent 34%),
+    linear-gradient(320deg, color-mix(in srgb, var(--heading) 8%, transparent), transparent 30%);
+  pointer-events: none;
+}
+
+@keyframes authFadeUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-appear,
+  .auth-appear-delay-1,
+  .auth-appear-delay-2 {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+.admin-theme-shell {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--app-bg);
+  background-image:
+    radial-gradient(circle at top left, var(--accent-soft), transparent 28%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-color) 14%, transparent), transparent 24%);
+  color: var(--heading);
+}
+
+.admin-theme-shell::before,
+.admin-theme-shell::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.admin-theme-shell::before {
+  top: 5%;
+  left: -5%;
+  width: 320px;
+  height: 320px;
+  background: var(--accent-soft);
+}
+
+.admin-theme-shell::after {
+  right: -4%;
+  bottom: 8%;
+  width: 280px;
+  height: 280px;
+  background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+}
+
+.admin-sidebar-shell {
+  /* Fully-opaque base (--surface-strong-opaque, alpha 1) layered under the
+     translucent gradient — on mobile this panel is `fixed` and overlays the
+     page content. --surface-strong itself is only ~72% opaque in dark mode
+     (by design, for cards meant to sit over blurred content), which isn't
+     enough on its own: some mobile browsers don't reliably composite
+     backdrop-filter on a fixed overlay, so the ~28% gap let the dashboard
+     behind it show through. The opaque token removes that dependency. */
+  background-color: var(--surface-strong-opaque);
+  background-image: linear-gradient(180deg, var(--surface-strong) 0%, var(--surface) 100%);
+  border-right: 1px solid var(--border);
+  box-shadow: 18px 0 48px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.admin-topbar-shell {
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.admin-page {
+  min-height: 100%;
+  border-radius: 30px;
+  background: linear-gradient(180deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 70%, transparent) 100%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface-strong) 60%, transparent);
+  color: var(--heading);
+}
+
+.admin-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-strong) 60%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--heading);
+}
+
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, var(--accent-soft), transparent 30%),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 34%),
+    var(--surface-strong);
+  border: 1px solid var(--border);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.12);
+  color: var(--heading);
+}
+
+.admin-input {
+  background: var(--field-bg);
+  border: 1px solid var(--border);
+  color: var(--heading);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface-strong) 50%, transparent);
+}
+
+.admin-input::placeholder {
+  color: var(--subtle);
+}
+
+.admin-input:focus {
+  border-color: var(--accent-color);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    inset 0 1px 0 color-mix(in srgb, var(--surface-strong) 50%, transparent);
+}
+
+/* Browsers paint saved-credential autofill with their own grey/blue
+   background, which clashes with the current theme. Force it back to the
+   input's own fill via the long-transition-delay trick (there is no way to
+   just clear the autofill background directly). */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--heading);
+  caret-color: var(--heading);
+  -webkit-box-shadow: 0 0 0 1000px var(--app-bg) inset;
+  box-shadow: 0 0 0 1000px var(--app-bg) inset;
+  transition: background-color 600000s ease-in-out 0s;
+}
+
+.admin-input:-webkit-autofill,
+.admin-input:-webkit-autofill:hover,
+.admin-input:-webkit-autofill:focus,
+.admin-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--field-bg) inset;
+  box-shadow: 0 0 0 1000px var(--field-bg) inset;
+}
+
+.admin-nav-item {
+  border: 1px solid transparent;
+  color: var(--body);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-nav-item:hover {
+  color: var(--heading);
+  background: var(--surface);
+  border-color: var(--border);
+  transform: translateX(2px);
+}
+
+.admin-nav-item.is-active {
+  color: var(--accent-foreground);
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  border-color: var(--accent-color);
+  box-shadow: 0 12px 24px var(--accent-glow);
+}
+
+.admin-nav-subitem {
+  border: 1px solid transparent;
+  color: var(--subtle);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-nav-subitem:hover {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--heading);
+  transform: translateX(2px);
+}
+
+.admin-nav-subitem.is-active {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  border-color: var(--accent-color);
+  color: var(--accent-foreground);
+  box-shadow: 0 8px 18px var(--accent-glow);
+  font-weight: 600;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
+  box-shadow: 0 8px 18px var(--accent-glow);
+  color: var(--accent-foreground);
+}
+
+
+.sidebar-icon-motion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  transition:
+    filter 180ms ease,
+    color 180ms ease;
+  will-change: transform, filter;
+}
+
+.group:hover .sidebar-icon-motion,
+.sidebar-icon-motion.is-active {
+  animation: sidebarIconOrbit 680ms cubic-bezier(0.22, 1, 0.36, 1);
+  filter: drop-shadow(0 8px 14px var(--accent-glow));
+}
+
+@keyframes sidebarIconOrbit {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate3d(1px, -5px, 0) rotate(85deg) scale(1.16);
+  }
+  55% {
+    transform: translate3d(-2px, 2px, 0) rotate(210deg) scale(1.06);
+  }
+  78% {
+    transform: translate3d(1px, -1px, 0) rotate(320deg) scale(0.98);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
+  }
+}
+
+/* ===========================
+   VORTEX-STYLE BACKGROUND
+   =========================== */
+
+.vortex-bg {
+  position: relative;
+  background:
+    radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 30%),
+    radial-gradient(circle at 80% 25%, color-mix(in srgb, var(--accent-color) 14%, transparent), transparent 32%),
+    radial-gradient(circle at 50% 80%, color-mix(in srgb, var(--body) 10%, transparent), transparent 28%),
+    linear-gradient(135deg, var(--app-bg) 0%, color-mix(in srgb, var(--app-bg) 85%, var(--accent-color) 15%) 50%, var(--app-bg) 100%);
+  overflow: hidden;
+}
+
+/* ✅ Pause animations until ready */
+.vortex-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--surface) 60%, transparent),
+    var(--accent-glow),
+    color-mix(in srgb, var(--accent-color) 18%, transparent),
+    var(--accent-glow),
+    color-mix(in srgb, var(--surface) 60%, transparent)
+  );
+  background-size: 400% 400%;
+  animation: vortexGradient 20s ease infinite;
+  animation-play-state: paused; /* ✅ Paused by default */
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  z-index: 0;
+  will-change: background-position; /* ✅ Performance boost */
+}
+
+/* ✅ Start animation when ready */
+.animations-ready .vortex-bg::before {
+  animation-play-state: running;
+}
+
+@keyframes vortexGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ✅ Optimized orbs */
+.vortex-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.4;
+  mix-blend-mode: screen;
+  animation: vortexFloat 18s ease-in-out infinite;
+  animation-play-state: paused; /* ✅ Paused by default */
+  will-change: transform; /* ✅ Performance boost */
+}
+
+.vortex-orb--1,
+.vortex-orb--2,
+.vortex-orb--3,
+.vortex-orb--4 {
+  background: radial-gradient(circle, var(--accent-glow) 0%, var(--accent-soft) 45%, transparent 75%);
+}
+
+/* ✅ Start animation when ready */
+.animations-ready .vortex-orb {
+  animation-play-state: running;
+}
+
+/* ✅ Mobile optimization - smaller, less blur */
+@media (max-width: 768px) {
+  .vortex-orb {
+    filter: blur(50px); /* Reduced from 90px */
+    opacity: 0.3; /* Reduced from 0.4 */
+  }
+  
+  .vortex-orb--1 {
+    width: 250px;
+    height: 250px;
+  }
+  
+  .vortex-orb--2 {
+    width: 300px;
+    height: 300px;
+  }
+  
+  .vortex-orb--3 {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .vortex-orb--4 {
+    width: 280px;
+    height: 280px;
+  }
+}
+
+.vortex-orb--1 {
+  width: 400px;
+  height: 400px;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+}
+
+.vortex-orb--2 {
+  width: 500px;
+  height: 500px;
+  top: 50%;
+  left: -10%;
+  animation-delay: 3s;
+}
+
+.vortex-orb--3 {
+  width: 300px;
+  height: 300px;
+  bottom: 10%;
+  right: 5%;
+  animation-delay: 6s;
+}
+
+.vortex-orb--4 {
+  width: 450px;
+  height: 450px;
+  top: 20%;
+  right: -10%;
+  animation-delay: 9s;
+}
+
+@keyframes vortexFloat {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(60px, -40px) scale(1.1);
+  }
+  50% {
+    transform: translate(-40px, 50px) scale(0.9);
+  }
+  75% {
+    transform: translate(20px, -20px) scale(1.05);
+  }
+}

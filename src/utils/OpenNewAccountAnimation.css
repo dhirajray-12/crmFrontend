@@ -1,0 +1,73 @@
+/* Lightweight, one-shot entrance animations for the Open New Account flow.
+   Only opacity/transform are animated (no blur/scale-heavy blobs) to keep
+   scrolling and re-renders cheap. */
+
+@keyframes onaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ona-fade-up {
+  animation: onaFadeUp 0.35s ease-out both;
+}
+
+@keyframes onaScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ona-scale-in {
+  animation: onaScaleIn 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ona-fade-up,
+  .ona-scale-in {
+    animation-duration: 0.01ms;
+  }
+}
+
+/* Diagonal light sweep on hover. Only `transform` is animated (GPU-composited,
+   no layout/paint cost) so it's safe even on large card grids. */
+.ona-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.ona-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.7s ease;
+  pointer-events: none;
+}
+
+.ona-shine:hover::after {
+  transform: translateX(120%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ona-shine::after {
+    display: none;
+  }
+}
+
