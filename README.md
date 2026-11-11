@@ -12,6 +12,8 @@
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socketdotio&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
 
+**Part of the CRM suite:** this web app · [Backend API](https://github.com/dhirajray-12/AppBackend) · [Flutter app](https://github.com/dhirajray-12/App)
+
 </div>
 
 ---
@@ -27,6 +29,7 @@
 - [Project Structure](#-project-structure)
 - [Routing & Roles](#-routing--roles)
 - [Deployment](#-deployment)
+- [Related Projects](#-related-projects)
 - [Contributing](#-contributing)
 
 ---
@@ -198,7 +201,7 @@ Guards in `src/Routes/` (`ProtectedRoutes`, `AdminOnlyRoute`, `PermissionRoute`)
 
 ---
 
-## ☁️ Deployment
+## 🚢 Deployment
 
 The project includes a [`vercel.json`](vercel.json) that rewrites every path to `index.html`, so client-side routing works on deep links.
 
@@ -207,6 +210,16 @@ The project includes a [`vercel.json`](vercel.json) that rewrites every path to 
 3. Deploy. Vercel runs `npm run build` and serves `dist/`.
 
 Any static host works if you add the same SPA fallback (all routes → `index.html`).
+
+---
+
+## 🧩 Related Projects
+
+| Repo | Description |
+| --- | --- |
+| [AppBackend](https://github.com/dhirajray-12/AppBackend) | Node.js + Express + MongoDB API that powers this app (REST + Socket.IO) |
+| [App](https://github.com/dhirajray-12/App) | Flutter mobile and desktop client for the same CRM |
+| [Relaya](https://github.com/dhirajray-12/relaya) | Webhook reliability platform that delivers the CRM's Stripe events |
 
 ---
 
@@ -221,6 +234,6 @@ Any static host works if you add the same SPA fallback (all routes → `index.ht
 
 <div align="center">
 
-Made with ❤️ by **Dhiraj**
+Designed and built by **[Dhiraj Ray](https://github.com/dhirajray-12)**
 
 </div>
