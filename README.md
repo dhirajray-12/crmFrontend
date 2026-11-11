@@ -11,6 +11,7 @@
 ![React Query](https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=reactquery&logoColor=white)
 ![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?logo=socketdotio&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-14b886.svg)](LICENSE)
 
 **Part of the CRM suite:** this web app · [Backend API](https://github.com/dhirajray-12/AppBackend) · [Flutter app](https://github.com/dhirajray-12/App)
 
@@ -229,6 +230,12 @@ Any static host works if you add the same SPA fallback (all routes → `index.ht
 2. Commit your changes: `git commit -m "Add my change"`
 3. Run `npm run lint` and `npm run build` to make sure everything passes
 4. Push the branch and open a Pull Request
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
 
 ---
 
